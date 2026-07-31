@@ -33,7 +33,6 @@ services:
     name: yueliang-frontend
     runtime: static
     rootDir: frontend
-    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     # 部署后到前端服务的 Environment 里填这两个(指向后端服务的公网地址):
