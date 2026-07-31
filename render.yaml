@@ -1,0 +1,51 @@
+# 月亮通讯 · Render 部署蓝图(Blueprint)
+# 在 Render 控制台:New → Blueprint → 选你的 GitHub 仓库,即可按此文件一键建 3 个资源。
+
+databases:
+  - name: yueliang-db
+    databaseName: yueliang
+    plan: free
+
+services:
+  # ===== 后端:NestJS =====
+  - type: web
+    name: yueliang-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    # 用 PG 版 schema(本地仍用默认的 MySQL schema,互不影响)
+    buildCommand: npm install && npx prisma generate --schema prisma/schema.postgres.prisma && npm run build
+    # 每次部署先把表结构同步到 PG,再启动
+    startCommand: npx prisma db push --schema prisma/schema.postgres.prisma --accept-data-loss && node dist/main
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yueliang-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES
+        value: 8h
+
+  # ===== 前端:Vue 静态站 =====
+  - type: web
+    name: yueliang-frontend
+    runtime: static
+    rootDir: frontend
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    # 部署后到前端服务的 Environment 里填这两个(指向后端服务的公网地址):
+    #   VITE_API_BASE = https://yueliang-backend.onrender.com/api
+    #   VITE_WS_URL   = https://yueliang-backend.onrender.com
+    envVars:
+      - key: VITE_API_BASE
+        sync: false
+      - key: VITE_WS_URL
+        sync: false
+    # SPA 前端路由:所有路径回退到 index.html
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

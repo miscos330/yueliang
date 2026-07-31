@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/// 小程序(图2)
+model MiniProgram {
+  id           Int      @id @default(autoincrement())
+  name         String
+  appid        String   @unique
+  appSecret    String
+  status       Int      @default(1)
+  csSwitchable Boolean  @default(true)
+  csCount      Int      @default(0)
+  remark       String?  @db.Text
+  msgTemplate  String?
+  adminName    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("mini_program")
+}
+
+/// 客服 / 管理员账号(P3)
+model Cs {
+  id          Int       @id @default(autoincrement())
+  username    String    @unique
+  password    String
+  nickname    String
+  avatar      String?
+  role        String    @default("cs")
+  status      Int       @default(1)
+  online      Boolean   @default(false)
+  fansCount   Int       @default(0)
+  remark      String?   @db.Text
+  groupId     Int?
+  group       CsGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("cs")
+}
+
+/// 客服分组(P3)
+model CsGroup {
+  id        Int      @id @default(autoincrement())
+  name      String
+  remark    String?
+  members   Cs[]
+  createdAt DateTime @default(now())
+
+  @@map("cs_group")
+}
+
+/// 粉丝 / 用户(P4)
+model Fan {
+  id            Int            @id @default(autoincrement())
+  openid        String         @unique // 微信 openid(P6);当前用模拟 id
+  nickname      String
+  avatar        String?
+  miniappId     Int? // 来自哪个小程序
+  assignedCsId  Int? // 接待客服(接粉)
+  online        Boolean        @default(false)
+  lastActiveAt  DateTime?
+  createdAt     DateTime       @default(now())
+  conversations Conversation[]
+
+  @@map("fan")
+}
+
+/// 会话(P4)
+model Conversation {
+  id        Int       @id @default(autoincrement())
+  fanId     Int
+  fan       Fan       @relation(fields: [fanId], references: [id], onDelete: Cascade)
+  csId      Int? // 当前接待客服
+  miniappId Int?
+  status    Int       @default(1) // 1 进行中 / 0 已关闭
+  lastMsg   String?   @db.Text // 最后一条消息预览
+  lastMsgAt DateTime?
+  unread    Int       @default(0) // 客服未读数
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@map("conversation")
+}
+
+/// 系统设置(键值,P5)
+model Setting {
+  key   String @id
+  value String @db.Text
+
+  @@map("setting")
+}
+
+/// 快捷回复 / 消息模板(P5)
+model QuickReply {
+  id        Int      @id @default(autoincrement())
+  content   String   @db.Text
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("quick_reply")
+}
+
+/// 消息(P4)
+model Message {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  fromType       String // fan | cs
+  fromId         Int? // 发送方 id
+  content        String       @db.Text
+  type           String       @default("text") // text | image
+  read           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@map("message")
+}

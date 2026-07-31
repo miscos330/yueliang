@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+
+# 本地数据库(免安装版,勿入库)
+/mysql-*/
