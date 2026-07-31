@@ -4,9 +4,8 @@
 # 适用:Ubuntu 22.04 / 24.04,全新服务器,无需域名(IP + http)
 #
 # 用法(在服务器上,以 root 或 sudo):
-#   git clone https://github.com/miscos330/yueliang.git /opt/yueliang
-#   cd /opt/yueliang
-#   sudo bash deploy-vps.sh
+#   1) 把源码解压/上传到 /opt/yueliang
+#   2) cd /opt/yueliang && sudo bash deploy-vps.sh
 #
 set -euo pipefail
 

@@ -23,11 +23,13 @@ ssh root@你的服务器IP
 
 首次会问 yes,然后输 root 密码。
 
-## 3. 一键部署(三条命令)
+## 3. 上传源码并一键部署
+
+用 WinSCP / scp 把源码压缩包上传到服务器,解压后部署:
 
 ```bash
-apt-get update && apt-get install -y git
-git clone https://github.com/miscos330/yueliang.git /opt/yueliang
+apt-get update && apt-get install -y unzip
+cd /opt && unzip yueliang.zip        # 解压出 /opt/yueliang
 cd /opt/yueliang && bash deploy-vps.sh
 ```
 
@@ -60,10 +62,12 @@ pm2 restart yueliang-backend   # 重启后端
 pm2 status                     # 进程状态
 ```
 
-## 更新代码后重新部署
+## 更新版本
+
+拿到新版源码,重新上传解压覆盖 `/opt/yueliang`,再执行:
 
 ```bash
-cd /opt/yueliang && git pull && bash deploy-vps.sh
+cd /opt/yueliang && bash deploy-vps.sh
 ```
 
 ---
