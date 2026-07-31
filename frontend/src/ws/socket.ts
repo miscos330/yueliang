@@ -1,7 +1,9 @@
 import { io, type Socket } from 'socket.io-client';
 
-// 开发直连本地后端;生产由 VITE_WS_URL 指向后端(如 https://xxx.onrender.com)
-const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3100';
+// 开发直连本地后端;生产默认走同源(Nginx 反代 /socket.io),也可用 VITE_WS_URL 覆盖
+const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  (import.meta.env.DEV ? 'http://localhost:3100' : window.location.origin);
 
 /** 客服端连接:带 JWT */
 export function createCsSocket(token: string): Socket {
