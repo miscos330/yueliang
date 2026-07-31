@@ -110,6 +110,25 @@
         <el-form-item label="消息模板">
           <el-input v-model="form.msgTemplate" placeholder="消息模板 ID(可选)" />
         </el-form-item>
+
+        <el-divider content-position="left">微信对接(选填,真机时用)</el-divider>
+        <el-form-item label="推送Token">
+          <el-input v-model="form.token" placeholder="自定义字符串,需与微信小程序后台填的一致" />
+        </el-form-item>
+        <el-form-item label="AESKey">
+          <el-input v-model="form.encodingAESKey" placeholder="安全模式才需要;明文模式留空" />
+        </el-form-item>
+        <el-form-item v-if="dialogMode === 'edit'" label="回调地址">
+          <el-input :model-value="callbackUrl" readonly>
+            <template #append>
+              <el-button @click="copyCallback">复制</el-button>
+            </template>
+          </el-input>
+          <div class="form-hint">
+            填到微信小程序后台「开发 → 消息推送」的 URL;数据格式选 JSON、明文模式
+          </div>
+        </el-form-item>
+
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
           <span class="form-hint">{{ form.status === 1 ? '启用' : '禁用' }}</span>
@@ -130,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Plus, Refresh, Search } from '@element-plus/icons-vue';
 import {
@@ -196,6 +215,8 @@ const defaultForm = () => ({
   status: 1,
   csSwitchable: true,
   msgTemplate: '',
+  token: '',
+  encodingAESKey: '',
   remark: '',
 });
 const form = reactive(defaultForm());
@@ -204,6 +225,15 @@ const rules: FormRules = {
   appid: [{ required: true, message: '请输入 AppID', trigger: 'blur' }],
   appSecret: [{ required: true, message: '请输入 AppSecret', trigger: 'blur' }],
 };
+
+// 微信消息推送回调地址(填到小程序后台)
+const callbackUrl = computed(
+  () => `${window.location.origin}/api/wechat/callback/${form.appid}`,
+);
+function copyCallback() {
+  navigator.clipboard?.writeText(callbackUrl.value);
+  ElMessage.success('已复制回调地址');
+}
 
 function openAdd() {
   dialogMode.value = 'add';

@@ -10,6 +10,8 @@ export interface MiniApp {
   csCount: number;
   remark?: string | null;
   msgTemplate?: string | null;
+  token?: string | null;
+  encodingAESKey?: string | null;
   adminName?: string | null;
   createdAt: string;
   updatedAt: string;

@@ -10,12 +10,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
+import { WechatService } from './wechat.service';
 
-/**
- * 客服 / 粉丝 共用一个网关,靠握手参数 role 区分。
- * 客服端:io(url, { query: { role:'cs', token } })
- * 粉丝端:io(url, { query: { role:'fan', openid, nickname } })
- */
 @WebSocketGateway({ cors: { origin: '*' } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
@@ -23,6 +19,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(
     private readonly chat: ChatService,
+    private readonly wechat: WechatService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
   ) {}
@@ -56,7 +53,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.join(`fan_${fan.id}`);
       await this.chat.setFanOnline(fan.id, true);
 
-      // 接粉 + 建会话 + 自动欢迎语
       const conv = await this.chat.assignAndEnsureConversation(fan.id);
       await this.chat.ensureWelcome(conv.id, conv.csId);
       const history = await this.chat.getMessages(conv.id);
@@ -70,7 +66,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (conv.csId) {
         this.server
           .to(`cs_${conv.csId}`)
-          .emit('conversation:update', await this.chat.getConversationBrief(conv.id));
+          .emit(
+            'conversation:update',
+            await this.chat.getConversationBrief(conv.id),
+          );
       }
       this.logger.log(`粉丝 #${fan.id}(${nickname})已上线,会话 #${conv.id}`);
       return;
@@ -88,19 +87,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  /** 粉丝发消息 */
+  /** 把新消息推给相关房间。微信渠道来的消息也走这里(fan 房间没人时无害)。 */
+  async emitMessageToRooms(msg: any) {
+    if (msg.fanId) this.server.to(`fan_${msg.fanId}`).emit('message:new', msg);
+    if (msg.csId) {
+      this.server.to(`cs_${msg.csId}`).emit('message:new', msg);
+      this.server
+        .to(`cs_${msg.csId}`)
+        .emit(
+          'conversation:update',
+          await this.chat.getConversationBrief(msg.conversationId),
+        );
+    }
+  }
+
+  /** 粉丝(socket 端)发消息 */
   @SubscribeMessage('fan:message')
   async onFanMessage(client: Socket, payload: { content: string }) {
     const { fanId } = client.data || {};
     if (!fanId || !payload?.content) return;
     const msg = await this.chat.fanSend(fanId, payload.content);
-    this.server.to(`fan_${fanId}`).emit('message:new', msg);
-    if (msg.csId) {
-      this.server.to(`cs_${msg.csId}`).emit('message:new', msg);
-      this.server
-        .to(`cs_${msg.csId}`)
-        .emit('conversation:update', await this.chat.getConversationBrief(msg.conversationId));
-    }
+    await this.emitMessageToRooms(msg);
   }
 
   /** 客服发消息 */
@@ -111,9 +118,23 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { csId } = client.data || {};
     if (!csId || !payload?.conversationId || !payload?.content) return;
-    const msg = await this.chat.csSend(csId, payload.conversationId, payload.content);
+    const msg = await this.chat.csSend(
+      csId,
+      payload.conversationId,
+      payload.content,
+    );
     this.server.to(`cs_${csId}`).emit('message:new', msg);
     this.server.to(`fan_${msg.fanId}`).emit('message:new', msg);
+
+    // 若粉丝来自微信,则通过客服消息接口下发(无真机凭据时自动跳过)
+    const fan = await this.chat.getFan(msg.fanId);
+    if (fan?.miniappId && fan.openid) {
+      await this.wechat.sendCustomMessage(
+        fan.miniappId,
+        fan.openid,
+        payload.content,
+      );
+    }
   }
 
   /** 客服标记会话已读 */

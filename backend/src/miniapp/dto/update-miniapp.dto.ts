@@ -39,4 +39,14 @@ export class UpdateMiniappDto {
   @IsString()
   @MaxLength(64)
   msgTemplate?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  token?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  encodingAESKey?: string;
 }

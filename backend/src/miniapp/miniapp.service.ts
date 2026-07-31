@@ -53,6 +53,8 @@ export class MiniappService {
         csSwitchable: dto.csSwitchable ?? true,
         remark: dto.remark,
         msgTemplate: dto.msgTemplate,
+        token: dto.token,
+        encodingAESKey: dto.encodingAESKey,
         adminName: adminName ?? '超级管理员',
       },
     });

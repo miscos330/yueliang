@@ -19,8 +19,15 @@ model MiniProgram {
   remark       String?  @db.Text
   msgTemplate  String?
   adminName    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+
+  // 微信对接(P6)
+  token             String? // 消息推送 Token
+  encodingAESKey    String? // 消息加解密 Key(安全模式,可选)
+  accessToken       String?   @db.Text // 缓存的 access_token
+  accessTokenExpire DateTime? // access_token 过期时间
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("mini_program")
 }

@@ -137,6 +137,23 @@ export class ChatService {
     return { ...msg, csId: conv.csId, fanId };
   }
 
+  /** 外部渠道(微信)来的粉丝消息:建/找粉丝 + 会话,存消息,返回用于推送的 msg */
+  async handleExternalFanMessage(
+    openid: string,
+    nickname: string,
+    miniappId: number,
+    content: string,
+  ) {
+    const fan = await this.ensureFan(openid, nickname, miniappId);
+    await this.setFanOnline(fan.id, true);
+    return this.fanSend(fan.id, content);
+  }
+
+  /** 取粉丝(判断是否微信来源、下发客服消息用) */
+  getFan(fanId: number) {
+    return this.prisma.fan.findUnique({ where: { id: fanId } });
+  }
+
   async csSend(csId: number, conversationId: number, content: string) {
     const conv = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
